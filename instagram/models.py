@@ -57,6 +57,8 @@ class Media(ApiModel):
             new_media.location = Location.object_from_dictionary(entry['location'])
 
         new_media.link = entry['link']
+        
+        new_media.filter = entry['filter']
 
         return new_media
 
