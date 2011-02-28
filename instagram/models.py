@@ -106,7 +106,7 @@ class Location(ApiModel):
             point = Point(entry['latitude'],
                           entry['longitude'])
         location = cls(entry['id'],
-                       point,
+                       point=point,
                        name=entry['name'])
         return location
 
