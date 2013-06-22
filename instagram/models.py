@@ -59,10 +59,6 @@ class Media(ApiModel):
         for comment in entry['comments']['data']:
             new_media.comments.append(Comment.object_from_dictionary(comment))
         
-        new_media.caption = None
-        if entry['caption']:
-            new_media.caption = Caption.object_from_dictionary(entry['caption'])
-
         new_media.created_time = timestamp_to_datetime(entry['created_time'])
 
         if entry['location'] and 'id' in entry:
@@ -79,8 +75,6 @@ class Media(ApiModel):
 
         new_media.link = entry['link']
         
-        new_media.filter = entry['filter']
-
         new_media.filter = entry.get('filter')
 
         return new_media
