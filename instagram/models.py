@@ -117,6 +117,7 @@ class Comment(ApiModel):
     def __unicode__(self):
         return "Comment: %s said \"%s\"" % (self.user.username, self.text)
 
+
 class Point(ApiModel):
     def __init__(self, latitude, longitude):
         self.latitude = latitude
