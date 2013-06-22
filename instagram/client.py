@@ -143,12 +143,6 @@ class InstagramAPI(oauth2.OAuth2API):
                 root_class=Media,
                 paginates=True)
 
-    geography_recent_media = bind_method(
-                path = "/geographies/{geography_id}/media/recent",
-                accepts_parameters = MEDIA_ACCEPT_PARAMETERS + ["geography_id"],
-                root_class = Media,
-                paginates = True)
-
     tag_recent_media = bind_method(
                 path="/tags/{tag_name}/media/recent",
                 accepts_parameters=MEDIA_ACCEPT_PARAMETERS + ['tag_name'],

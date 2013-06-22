@@ -101,7 +101,7 @@ class Comment(ApiModel):
         text = entry['text']
         created_at = timestamp_to_datetime(entry['created_time'])
         id = entry['id']
-        return cls(id=id, user=user, text=text, created_at=created_at)
+        return Comment(id=id, user=user, text=text, created_at=created_at)
 
     def __unicode__(self):
         return "Comment: %s said \"%s\"" % (self.user.username, self.text)
