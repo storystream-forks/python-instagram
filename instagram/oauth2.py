@@ -11,6 +11,7 @@ class OAuth2AuthExchangeError(Exception):
     def __str__(self):
         return self.description
 
+
 class OAuth2API(object):
     host = None
     base_path = None
@@ -22,7 +23,7 @@ class OAuth2API(object):
     protocol = "https"
     # override with 'Instagram', etc
     api_name = "Generic API"
-    
+
     def __init__(self, client_id=None, client_secret=None, access_token=None, redirect_uri=None):
         self.client_id = client_id
         self.client_secret = client_secret
@@ -31,22 +32,27 @@ class OAuth2API(object):
 
     def get_authorize_url(self, scope=None):
         req = OAuth2AuthExchangeRequest(self)
-        return req.get_authorize_url(scope = scope)
-        
+        return req.get_authorize_url(scope=scope)
+
     def get_authorize_login_url(self, scope=None):
         """ scope should be a tuple or list of requested scope access levels """
         req = OAuth2AuthExchangeRequest(self)
-        return req.get_authorize_login_url(scope = scope)
+        return req.get_authorize_login_url(scope=scope)
 
     def exchange_code_for_access_token(self, code):
         req = OAuth2AuthExchangeRequest(self)
-        return req.exchange_for_access_token(code = code)
+        return req.exchange_for_access_token(code=code)
+
+    def exchange_user_id_for_access_token(self, user_id):
+        req = OAuth2AuthExchangeRequest(self)
+        return req.exchange_for_access_token(user_id=user_id)
 
     def exchange_xauth_login_for_access_token(self, username, password, scope=None):
         """ scope should be a tuple or list of requested scope access levels """
         req = OAuth2AuthExchangeRequest(self)
-        return req.exchange_for_access_token(username = username, password = password,
-                                             scope = scope)
+        return req.exchange_for_access_token(username=username, password=password,
+                                             scope=scope)
+
 
 class OAuth2AuthExchangeRequest(object):
     def __init__(self, api):
@@ -59,11 +65,11 @@ class OAuth2AuthExchangeRequest(object):
             "redirect_uri": self.api.redirect_uri
         }
         if scope:
-            client_params.update(scope = ' '.join(scope))
+            client_params.update(scope=' '.join(scope))
         url_params = urllib.urlencode(client_params)
         return "%s?%s" % (self.api.authorize_url, url_params)
 
-    def _data_for_exchange(self, code=None, username=None, password=None, scope=None):
+    def _data_for_exchange(self, code=None, username=None, password=None, scope=None, user_id=None):
         client_params = {
             "client_id": self.api.client_id,
             "client_secret": self.api.client_secret,
@@ -73,35 +79,37 @@ class OAuth2AuthExchangeRequest(object):
         if code:
             client_params.update(code=code)
         elif username and password:
-            client_params.update(username = username, 
-                                 password = password,
-                                 grant_type = "password")
+            client_params.update(username=username,
+                                 password=password,
+                                 grant_type="password")
             if scope:
-                client_params.update(scope = ' '.join(scope))
+                client_params.update(scope=' '.join(scope))
+        elif user_id:
+            client_params.update(user_id=user_id)
         return urllib.urlencode(client_params)
 
     def get_authorize_url(self, scope=None):
-        return self._url_for_authorize(scope = scope)
+        return self._url_for_authorize(scope=scope)
 
     def get_authorize_login_url(self, scope=None):
-        http_object = Http()
+        http_object = Http(disable_ssl_certificate_validation=True)
 
-        url = self._url_for_authorize(scope = scope)
+        url = self._url_for_authorize(scope=scope)
         response, content = http_object.request(url)
         if response['status'] != '200':
             raise OAuth2AuthExchangeError("The server returned a non-200 response for URL %s" % url)
         redirected_to = response['content-location']
         return redirected_to
 
-    def exchange_for_access_token(self, code=None, username=None, password=None, scope=None):
-        data = self._data_for_exchange(code, username, password, scope = scope)
-        http_object = Http()
+    def exchange_for_access_token(self, code=None, username=None, password=None, scope=None, user_id=None):
+        data = self._data_for_exchange(code, username, password, scope=scope, user_id=user_id)
+        http_object = Http(disable_ssl_certificate_validation=True)
         url = self.api.access_token_url
         response, content = http_object.request(url, method="POST", body=data)
         parsed_content = simplejson.loads(content)
         if int(response['status']) != 200:
-            raise OAuth2AuthExchangeError(parsed_content.get("message", ""))
-        return parsed_content['access_token']
+            raise OAuth2AuthExchangeError(parsed_content.get("error_message", ""))
+        return parsed_content['access_token'], parsed_content['user']
 
 
 class OAuth2Request(object):
@@ -113,15 +121,15 @@ class OAuth2Request(object):
 
     def get_request(self, path, **kwargs):
         return self.make_request(self.prepare_request("GET", path, kwargs))
-    
+
     def post_request(self, path, **kwargs):
         return self.make_request(self.prepare_request("POST", path, kwargs))
-        
+
     def _full_url(self, path, include_secret=False):
-        return "%s://%s%s%s%s" % (self.api.protocol, 
-                                  self.api.host, 
-                                  self.api.base_path, 
-                                  path, 
+        return "%s://%s%s%s%s" % (self.api.protocol,
+                                  self.api.host,
+                                  self.api.base_path,
+                                  path,
                                   self._auth_query(include_secret))
 
     def _full_url_with_params(self, path, params, include_secret=False):
@@ -142,7 +150,7 @@ class OAuth2Request(object):
 
     def _post_body(self, params):
         return urllib.urlencode(params)
-    
+
     def _encode_multipart(params, files):
         boundary = "MuL7Ip4rt80uND4rYF0o"
 
@@ -153,7 +161,7 @@ class OAuth2Request(object):
             return ("--" + boundary,
                     'Content-Disposition: form-data; name="%s"' % (field_name),
                     "", str(params[field_name]))
-        
+
         def encode_file(field_name):
             file_name, file_handle = files[field_name]
             return ("--" + boundary,
@@ -167,11 +175,11 @@ class OAuth2Request(object):
         for field in files:
             lines.extend(encode_file(field))
         lines.extend(("--%s--" % (boundary), ""))
-        body = "\r\n".join (lines)
-        
+        body = "\r\n".join(lines)
+
         headers = {"Content-Type": "multipart/form-data; boundary=" + boundary,
                    "Content-Length": str(len(body))}
-        
+
         return body, headers
 
     def prepare_and_make_request(self, method, path, params, include_secret=False):
@@ -185,18 +193,19 @@ class OAuth2Request(object):
         if not params.get('files'):
             if method == "POST":
                 body = self._post_body(params)
-                headers = {'Content-type': 'application/x-www-form-urlencoded'}                
+                headers = {'Content-type': 'application/x-www-form-urlencoded'}
                 url = self._full_url(path, include_secret)
             else:
                 url = self._full_url_with_params(path, params, include_secret)
         else:
-            body, headers = encode_multipart(params, params['files'])
+            body, headers = self._encode_multipart(params, params['files'])
             url = self._full_url(path)
 
         return url, method, body, headers
 
-    def make_request(self, url, method="GET", body=None, headers={}):
+    def make_request(self, url, method="GET", body=None, headers=None):
+        headers = headers or {}
         if not 'User-Agent' in headers:
-            headers.update({"User-Agent":"%s Python Client" % self.api.api_name})
-        http_obj = Http()
+            headers.update({"User-Agent": "%s Python Client" % self.api.api_name})
+        http_obj = Http(disable_ssl_certificate_validation=True)
         return http_obj.request(url, method, body=body, headers=headers)

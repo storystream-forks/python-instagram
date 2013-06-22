@@ -1,6 +1,6 @@
 import hmac
 import hashlib
-import simplejson
+from json_import import simplejson
 
 class SubscriptionType:
     TAG = 'tag'
@@ -8,8 +8,14 @@ class SubscriptionType:
     GEOGRAPHY = 'geography'
     LOCATION = 'location'
 
-class SubscriptionVerifyError(Exception):
+
+class SubscriptionError(Exception):
     pass
+
+
+class SubscriptionVerifyError(SubscriptionError):
+    pass
+
 
 class SubscriptionsReactor(object):
 
@@ -25,7 +31,11 @@ class SubscriptionsReactor(object):
         if not self._verify_signature(client_secret, raw_response, x_hub_signature):
             raise SubscriptionVerifyError("X-Hub-Signature and hmac digest did not match")
 
-        response = simplejson.loads(raw_response)
+        try:
+            response = simplejson.loads(raw_response)
+        except ValueError:
+            raise SubscriptionError('Unable to parse response, not valid JSON.')
+
         for update in response:
             self._process_update(update)
 
@@ -41,9 +51,8 @@ class SubscriptionsReactor(object):
         callbacks.remove(callback)
 
     def _verify_signature(self, client_secret, raw_response, x_hub_signature):
-        digest = hmac.new(client_secret.encode('utf-8'), 
-                          msg=raw_response.encode('utf-8'), 
+        digest = hmac.new(client_secret.encode('utf-8'),
+                          msg=raw_response.encode('utf-8'),
                           digestmod=hashlib.sha1
                           ).hexdigest()
         return digest == x_hub_signature
-
