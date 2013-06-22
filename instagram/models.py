@@ -69,7 +69,7 @@ class Media(ApiModel):
         new_media.comments = []
         for comment in entry['comments']['data']:
             new_media.comments.append(Comment.object_from_dictionary(comment))
-        
+
         new_media.created_time = timestamp_to_datetime(entry['created_time'])
 
         if entry['location'] and 'id' in entry:
@@ -85,7 +85,7 @@ class Media(ApiModel):
                 new_media.tags.append(Tag.object_from_dictionary({'name': tag}))
 
         new_media.link = entry['link']
-        
+
         new_media.filter = entry.get('filter')
 
         return new_media
