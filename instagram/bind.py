@@ -91,7 +91,7 @@ def bind_method(**config):
             headers = headers or {}
             response, content = OAuth2Request(self.api).make_request(url, method=method, body=body, headers=headers)
 
-            rate_limit_statuses = ['503', '429']
+            rate_limit_statuses = ['503', '429', 420, 429]
             if response['status'] in rate_limit_statuses:
                 raise InstagramAPIError(response['status'], "Rate limited", "Your client is making too many request per second")
 
@@ -103,7 +103,7 @@ def bind_method(**config):
             # Handle OAuthRateLimitExceeded from Instagram's Nginx which uses
             # different format to documented api responses
             if 'meta' not in content_obj:
-                if content_obj.get('code') == 420 or content_obj.get('code') == 429:
+                if content_obj.get('code') in rate_limit_statuses:
                     error_message = content_obj.get('error_message') or "Your client is making too many request per second"
                     raise InstagramAPIError(content_obj.get('code'), "Rate limited", error_message)
 
